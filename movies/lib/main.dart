@@ -1,121 +1,196 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
+import 'theme/design_tokens.dart';
+import 'widgets/sidebar.dart';
+import 'widgets/top_bar.dart';
+import 'widgets/responsive_layout.dart';
+import 'pages/landing_page.dart';
+import 'pages/auth_page.dart';
+import 'pages/user_home_page.dart';
+import 'pages/dashboard_page.dart';
+import 'pages/users_page.dart';
+import 'pages/movies_page.dart';
+import 'pages/ratings_page.dart';
+import 'pages/settings_page.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MoviesApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MoviesApp extends StatelessWidget {
+  const MoviesApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'MOVIES',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      home: const AppRoot(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+/// Root widget managing the app state: landing / auth / user / admin.
+enum AppScreen { landing, loginUser, registerUser, loginAdmin, user, admin }
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class AppRoot extends StatefulWidget {
+  const AppRoot({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<AppRoot> createState() => _AppRootState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _AppRootState extends State<AppRoot> {
+  AppScreen _screen = AppScreen.landing;
+  int? _userId;
+  String? _pseudo;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  void _goTo(AppScreen s) => setState(() => _screen = s);
+
+  void _onUserLogin(int id, String pseudo) {
+    setState(() { _userId = id; _pseudo = pseudo; _screen = AppScreen.user; });
+  }
+
+  void _logout() {
+    setState(() { _userId = null; _pseudo = null; _screen = AppScreen.landing; });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    switch (_screen) {
+      case AppScreen.landing:
+        return LandingPage(
+          onLogin: () => _goTo(AppScreen.loginUser),
+          onRegister: () => _goTo(AppScreen.registerUser),
+        );
+      case AppScreen.loginUser:
+        return AuthPage(
+          onLoginSuccess: _onUserLogin,
+          onBack: () => _goTo(AppScreen.landing),
+        );
+      case AppScreen.registerUser:
+        return AuthPage(
+          onLoginSuccess: _onUserLogin,
+          onBack: () => _goTo(AppScreen.landing),
+          startOnRegister: true,
+        );
+      case AppScreen.loginAdmin:
+        return AuthPage(
+          onLoginSuccess: (_, __) => _goTo(AppScreen.admin),
+          onBack: () => _goTo(AppScreen.landing),
+        );
+      case AppScreen.user:
+        return UserHomePage(
+          userId: _userId!,
+          pseudo: _pseudo!,
+          onLogout: _logout,
+        );
+      case AppScreen.admin:
+        return _AdminShell(onLogout: _logout);
+    }
+  }
+}
+
+// ─── ADMIN SHELL (existing dashboard) ───
+
+const _navItems = [
+  SidebarItemData(icon: Icons.dashboard_outlined, label: 'Dashboard'),
+  SidebarItemData(icon: Icons.people_outline_rounded, label: 'Utilisateurs'),
+  SidebarItemData(icon: Icons.movie_outlined, label: 'Films'),
+  SidebarItemData(icon: Icons.rate_review_outlined, label: 'Notes'),
+  SidebarItemData(icon: Icons.settings_outlined, label: 'Parametres'),
+];
+
+const _pageTitles = ['Dashboard', 'Utilisateurs', 'Films', 'Notes', 'Parametres'];
+const _pageSubtitles = [
+  'Vue d\'ensemble de votre plateforme',
+  'Gestion des comptes utilisateurs',
+  'Catalogue et gestion des films',
+  'Notes et avis des utilisateurs',
+  'Configuration de l\'application',
+];
+
+class _AdminShell extends StatefulWidget {
+  final VoidCallback onLogout;
+  const _AdminShell({required this.onLogout});
+
+  @override
+  State<_AdminShell> createState() => _AdminShellState();
+}
+
+class _AdminShellState extends State<_AdminShell> {
+  int _selectedIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  Widget _getPage(int index) {
+    switch (index) {
+      case 0: return DashboardPage(onNavigate: (i) => setState(() => _selectedIndex = i));
+      case 1: return const UsersPage();
+      case 2: return const MoviesPage();
+      case 3: return const RatingsPage();
+      case 4: return const SettingsPage();
+      default: return DashboardPage(onNavigate: (i) => setState(() => _selectedIndex = i));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenType = getScreenType(context);
+
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      key: _scaffoldKey,
+      backgroundColor: AppColors.background,
+      drawer: screenType == ScreenType.mobile
+          ? Drawer(
+              backgroundColor: AppColors.sidebarBg,
+              child: AppSidebar(
+                selectedIndex: _selectedIndex,
+                onItemSelected: (i) { setState(() => _selectedIndex = i); Navigator.pop(context); },
+                items: _navItems,
+              ),
+            )
+          : null,
+      bottomNavigationBar: screenType == ScreenType.mobile
+          ? NavigationBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+              backgroundColor: AppColors.surface,
+              indicatorColor: AppColors.primary.withValues(alpha: 0.15),
+              destinations: _navItems.map((item) => NavigationDestination(
+                icon: Icon(item.icon, color: AppColors.textSecondary),
+                selectedIcon: Icon(item.icon, color: AppColors.primary),
+                label: item.label,
+              )).toList(),
+            )
+          : null,
+      body: Row(
+        children: [
+          if (screenType == ScreenType.desktop)
+            AppSidebar(selectedIndex: _selectedIndex, onItemSelected: (i) => setState(() => _selectedIndex = i), items: _navItems),
+          if (screenType == ScreenType.tablet)
+            AppNavigationRail(selectedIndex: _selectedIndex, onItemSelected: (i) => setState(() => _selectedIndex = i), items: _navItems),
+          Expanded(
+            child: Column(
+              children: [
+                AppTopBar(
+                  title: _pageTitles[_selectedIndex],
+                  subtitle: _pageSubtitles[_selectedIndex],
+                  showMenu: screenType == ScreenType.mobile,
+                  onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+                  onSettingsTap: () => setState(() => _selectedIndex = 4),
+                  onNotificationsTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Aucune notification'), backgroundColor: AppColors.primary, duration: Duration(seconds: 1)),
+                    );
+                  },
+                  onProfileTap: widget.onLogout,
+                ),
+                Expanded(child: _getPage(_selectedIndex)),
+              ],
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }
