@@ -5,7 +5,12 @@ class Movie {
 
     public function __construct($db) {
         $this->conn = $db;
-        $this->apiKey = getenv('IMDB_API_KEY');
+        // Priorite : constante definie par constants.php > variable d'environnement
+        if (defined('IMDB_API_KEY') && !empty(IMDB_API_KEY)) {
+            $this->apiKey = IMDB_API_KEY;
+        } else {
+            $this->apiKey = getenv('IMDB_API_KEY');
+        }
     }
 
     public function search($title) {

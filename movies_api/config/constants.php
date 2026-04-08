@@ -1,11 +1,15 @@
 <?php
 
-
 // On récupère la clé directement depuis Windows
 $sysApiKey = getenv('IMDB_API_KEY');
 
 if (!$sysApiKey) {
     $sysApiKey = $_SERVER['IMDB_API_KEY'] ?? null;
+}
+
+// Fallback : clé en dur si la variable d'environnement n'est pas accessible par Apache
+if (!$sysApiKey) {
+    $sysApiKey = 'c7051e7b';
 }
 
 // Définition des constantes
