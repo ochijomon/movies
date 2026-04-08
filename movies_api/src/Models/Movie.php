@@ -5,38 +5,51 @@ class Movie {
 
     public function __construct($db) {
         $this->conn = $db;
-        // On récupère ta clé Windows que tu as testée avec succès
         $this->apiKey = getenv('IMDB_API_KEY');
     }
 
-    // Méthode pour chercher sur l'API IMDB (OMDb)
     public function search($title) {
         $url = "http://www.omdbapi.com/?s=" . urlencode($title) . "&apikey=" . $this->apiKey;
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        return json_decode($response, true);
+        return $this->httpCall($url);
     }
 
-    // Méthode pour avoir les détails d'un film spécifique + TES notes locales
-    public function getDetails($imdbId) {
+    public function getOne($imdbId) {
+        // 1. Récupérer les infos IMDB
         $url = "http://www.omdbapi.com/?i=" . $imdbId . "&apikey=" . $this->apiKey;
+        $movieData = $this->httpCall($url);
+
+        if (!$movieData || $movieData['Response'] == 'False') return $movieData;
+
+        // 2. Calculer les moyennes locales (SQL)
+        $query = "SELECT 
+                    AVG(scenario) as avg_scenario, 
+                    AVG(jeu_acteur) as avg_jeu, 
+                    AVG(qualite_av) as avg_av, 
+                    COUNT(*) as total_reviews 
+                  FROM notes_films 
+                  WHERE imdb_id = :id";
         
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':id' => $imdbId]);
+        $stats = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // 3. Fusionner les stats dans l'objet final
+        $movieData['local_ratings'] = [
+            "avg_scenario" => round($stats['avg_scenario'] ?? 0, 1),
+            "avg_acting" => round($stats['avg_jeu'] ?? 0, 1),
+            "avg_visual" => round($stats['avg_av'] ?? 0, 1),
+            "total_reviews" => $stats['total_reviews']
+        ];
+
+        return $movieData;
+    }
+
+    private function httpCall($url) {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response = curl_exec($ch);
         curl_close($ch);
-
-        $data = json_decode($response, true);
-
-        // Optionnel : Ici tu pourras ajouter une requête SQL pour récupérer 
-        // la moyenne des notes (Scenario, Jeu, AV) stockées dans ta BDD.
-        
-        return $data;
+        return json_decode($response, true);
     }
 }
