@@ -9,9 +9,9 @@ class RatingBadge extends StatelessWidget {
   const RatingBadge({super.key, required this.rating, this.fontSize = 12});
 
   Color get _color {
-    if (rating >= 4.0) return AppColors.success;
-    if (rating >= 3.0) return AppColors.primary;
-    if (rating >= 2.0) return AppColors.warning;
+    if (rating >= 8.0) return AppColors.success;
+    if (rating >= 6.0) return AppColors.primary;
+    if (rating >= 4.0) return AppColors.warning;
     return AppColors.error;
   }
 

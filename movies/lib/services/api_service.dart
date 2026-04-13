@@ -134,6 +134,28 @@ class ApiService {
     return [];
   }
 
+  /// Delete a user: DELETE /admin/users.php?id=X
+  static Future<Map<String, dynamic>> deleteUser(int userId) async {
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/admin/users.php?id=$userId'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Update user: PUT /admin/users.php
+  static Future<Map<String, dynamic>> updateUser(int userId, {String? pseudo, String? email}) async {
+    final body = <String, dynamic>{'id': userId};
+    if (pseudo != null) body['pseudo'] = pseudo;
+    if (email != null) body['email'] = email;
+    final response = await http.put(
+      Uri.parse('$_baseUrl/admin/users.php'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   /// All ratings: GET /admin/ratings.php
   /// Returns List of {id, imdb_id, scenario, jeu_acteur, qualite_av, commentaire, pseudo}.
   static Future<List<Map<String, dynamic>>> getRatings() async {
@@ -145,5 +167,54 @@ class ApiService {
       }
     }
     return [];
+  }
+
+  // ─── USER PROFILE ───
+
+  /// Update own profile: PUT /auth/profile.php
+  static Future<Map<String, dynamic>> updateProfile(int userId, {String? pseudo, String? email, String? password}) async {
+    final body = <String, dynamic>{'id': userId};
+    if (pseudo != null) body['pseudo'] = pseudo;
+    if (email != null) body['email'] = email;
+    if (password != null && password.isNotEmpty) body['password'] = password;
+    final response = await http.put(
+      Uri.parse('$_baseUrl/auth/profile.php'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  // ─── RATING MANAGEMENT ───
+
+  /// Delete own rating: DELETE /movies/rate.php?id=X
+  static Future<Map<String, dynamic>> deleteRating(int ratingId) async {
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/movies/rate.php?id=$ratingId'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Update own rating: PUT /movies/rate.php
+  static Future<Map<String, dynamic>> updateRating({
+    required int ratingId,
+    required int scenario,
+    required int jeuActeur,
+    required int qualiteAv,
+    String commentaire = '',
+  }) async {
+    final response = await http.put(
+      Uri.parse('$_baseUrl/movies/rate.php'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'id': ratingId,
+        'scenario': scenario,
+        'jeu_acteur': jeuActeur,
+        'qualite_av': qualiteAv,
+        'commentaire': commentaire,
+      }),
+    );
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 }

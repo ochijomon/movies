@@ -156,7 +156,7 @@ class _MoviesPageState extends State<MoviesPage> {
 
   void _showRateDialog(String imdbId, String movieTitle) {
     final userIdCtrl = TextEditingController();
-    double scenario = 3, acteur = 3, av = 3;
+    double scenario = 5, acteur = 5, av = 5;
     final commentCtrl = TextEditingController();
 
     showDialog(
@@ -407,10 +407,10 @@ class _SliderRow extends StatelessWidget {
       child: Row(children: [
         SizedBox(width: 100, child: Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary))),
         Expanded(
-          child: Slider(value: value, min: 1, max: 5, divisions: 4, label: value.round().toString(),
+          child: Slider(value: value, min: 1, max: 10, divisions: 9, label: value.round().toString(),
             activeColor: AppColors.primary, onChanged: onChanged),
         ),
-        Text('${value.round()}/5', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+        Text('${value.round()}/10', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
       ]),
     );
   }

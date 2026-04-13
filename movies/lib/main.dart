@@ -12,6 +12,7 @@ import 'pages/users_page.dart';
 import 'pages/movies_page.dart';
 import 'pages/ratings_page.dart';
 import 'pages/settings_page.dart';
+import 'pages/admin_users_page.dart';
 
 void main() {
   runApp(const MoviesApp());
@@ -32,7 +33,7 @@ class MoviesApp extends StatelessWidget {
 }
 
 /// Root widget managing the app state: landing / auth / user / admin.
-enum AppScreen { landing, loginUser, registerUser, loginAdmin, user, admin }
+enum AppScreen { landing, loginUser, registerUser, user, admin }
 
 class AppRoot extends StatefulWidget {
   const AppRoot({super.key});
@@ -45,15 +46,31 @@ class _AppRootState extends State<AppRoot> {
   AppScreen _screen = AppScreen.landing;
   int? _userId;
   String? _pseudo;
+  String _role = 'user';
 
   void _goTo(AppScreen s) => setState(() => _screen = s);
 
-  void _onUserLogin(int id, String pseudo) {
-    setState(() { _userId = id; _pseudo = pseudo; _screen = AppScreen.user; });
+  void _onLoginSuccess(int id, String pseudo, String role) {
+    setState(() {
+      _userId = id;
+      _pseudo = pseudo;
+      _role = role;
+      _screen = role == 'admin' ? AppScreen.admin : AppScreen.user;
+    });
   }
 
   void _logout() {
-    setState(() { _userId = null; _pseudo = null; _screen = AppScreen.landing; });
+    setState(() { _userId = null; _pseudo = null; _role = 'user'; _screen = AppScreen.landing; });
+  }
+
+  /// Admin can switch to user view
+  void _switchToUserView() {
+    setState(() => _screen = AppScreen.user);
+  }
+
+  /// Switch back to admin view
+  void _switchToAdminView() {
+    setState(() => _screen = AppScreen.admin);
   }
 
   @override
@@ -66,28 +83,25 @@ class _AppRootState extends State<AppRoot> {
         );
       case AppScreen.loginUser:
         return AuthPage(
-          onLoginSuccess: _onUserLogin,
+          onLoginSuccess: _onLoginSuccess,
           onBack: () => _goTo(AppScreen.landing),
         );
       case AppScreen.registerUser:
         return AuthPage(
-          onLoginSuccess: _onUserLogin,
+          onLoginSuccess: _onLoginSuccess,
           onBack: () => _goTo(AppScreen.landing),
           startOnRegister: true,
-        );
-      case AppScreen.loginAdmin:
-        return AuthPage(
-          onLoginSuccess: (_, __) => _goTo(AppScreen.admin),
-          onBack: () => _goTo(AppScreen.landing),
         );
       case AppScreen.user:
         return UserHomePage(
           userId: _userId!,
           pseudo: _pseudo!,
           onLogout: _logout,
+          isAdmin: _role == 'admin',
+          onSwitchToAdmin: _role == 'admin' ? _switchToAdminView : null,
         );
       case AppScreen.admin:
-        return _AdminShell(onLogout: _logout);
+        return _AdminShell(onLogout: _logout, onSwitchToUser: _switchToUserView);
     }
   }
 }
@@ -96,15 +110,17 @@ class _AppRootState extends State<AppRoot> {
 
 const _navItems = [
   SidebarItemData(icon: Icons.dashboard_outlined, label: 'Dashboard'),
+  SidebarItemData(icon: Icons.admin_panel_settings_outlined, label: 'Admin'),
   SidebarItemData(icon: Icons.people_outline_rounded, label: 'Utilisateurs'),
   SidebarItemData(icon: Icons.movie_outlined, label: 'Films'),
   SidebarItemData(icon: Icons.rate_review_outlined, label: 'Notes'),
   SidebarItemData(icon: Icons.settings_outlined, label: 'Parametres'),
 ];
 
-const _pageTitles = ['Dashboard', 'Utilisateurs', 'Films', 'Notes', 'Parametres'];
+const _pageTitles = ['Dashboard', 'Administration', 'Utilisateurs', 'Films', 'Notes', 'Parametres'];
 const _pageSubtitles = [
   'Vue d\'ensemble de votre plateforme',
+  'Gestion des utilisateurs et leurs notes',
   'Gestion des comptes utilisateurs',
   'Catalogue et gestion des films',
   'Notes et avis des utilisateurs',
@@ -113,7 +129,8 @@ const _pageSubtitles = [
 
 class _AdminShell extends StatefulWidget {
   final VoidCallback onLogout;
-  const _AdminShell({required this.onLogout});
+  final VoidCallback onSwitchToUser;
+  const _AdminShell({required this.onLogout, required this.onSwitchToUser});
 
   @override
   State<_AdminShell> createState() => _AdminShellState();
@@ -126,10 +143,11 @@ class _AdminShellState extends State<_AdminShell> {
   Widget _getPage(int index) {
     switch (index) {
       case 0: return DashboardPage(onNavigate: (i) => setState(() => _selectedIndex = i));
-      case 1: return const UsersPage();
-      case 2: return const MoviesPage();
-      case 3: return const RatingsPage();
-      case 4: return const SettingsPage();
+      case 1: return const AdminUsersPage();
+      case 2: return const UsersPage();
+      case 3: return const MoviesPage();
+      case 4: return const RatingsPage();
+      case 5: return const SettingsPage();
       default: return DashboardPage(onNavigate: (i) => setState(() => _selectedIndex = i));
     }
   }
@@ -178,13 +196,18 @@ class _AdminShellState extends State<_AdminShell> {
                   subtitle: _pageSubtitles[_selectedIndex],
                   showMenu: screenType == ScreenType.mobile,
                   onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
-                  onSettingsTap: () => setState(() => _selectedIndex = 4),
+                  onSettingsTap: () => setState(() => _selectedIndex = 5),
                   onNotificationsTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Aucune notification'), backgroundColor: AppColors.primary, duration: Duration(seconds: 1)),
                     );
                   },
                   onProfileTap: widget.onLogout,
+                  trailing: TextButton.icon(
+                    onPressed: widget.onSwitchToUser,
+                    icon: const Icon(Icons.person_outline, size: 16, color: AppColors.accent),
+                    label: const Text('Vue utilisateur', style: TextStyle(fontSize: 12, color: AppColors.accent)),
+                  ),
                 ),
                 Expanded(child: _getPage(_selectedIndex)),
               ],

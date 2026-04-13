@@ -20,7 +20,7 @@ $data = json_decode(file_get_contents("php://input"));
 if(!empty($data->pseudo) && !empty($data->password)) {
     
     // On cherche l'utilisateur par son pseudo
-    $query = "SELECT id, pseudo, password FROM utilisateurs WHERE pseudo = :p LIMIT 0,1";
+    $query = "SELECT id, pseudo, password, role FROM utilisateurs WHERE pseudo = :p LIMIT 0,1";
     $stmt = $db->prepare($query);
     $stmt->execute([':p' => $data->pseudo]);
     
@@ -32,7 +32,8 @@ if(!empty($data->pseudo) && !empty($data->password)) {
         echo json_encode([
             "message" => "Connexion réussie",
             "id" => $user['id'],
-            "pseudo" => $user['pseudo']
+            "pseudo" => $user['pseudo'],
+            "role" => $user['role'] ?? 'user'
         ]);
     } else {
         http_response_code(401);

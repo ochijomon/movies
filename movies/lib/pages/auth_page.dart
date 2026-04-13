@@ -4,8 +4,8 @@ import '../services/api_service.dart';
 
 /// Authentication page with login and register tabs.
 class AuthPage extends StatefulWidget {
-  /// Called on successful login with {id, pseudo}.
-  final void Function(int userId, String pseudo) onLoginSuccess;
+  /// Called on successful login with {id, pseudo, role}.
+  final void Function(int userId, String pseudo, String role) onLoginSuccess;
   final VoidCallback onBack;
   final bool startOnRegister;
 
@@ -56,7 +56,8 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
     try {
       final result = await ApiService.login(_loginPseudo.text, _loginPass.text);
       if (result.containsKey('id')) {
-        widget.onLoginSuccess(result['id'] as int, result['pseudo'] as String);
+        final role = result['role']?.toString() ?? 'user';
+        widget.onLoginSuccess(result['id'] as int, result['pseudo'] as String, role);
       } else {
         setState(() { _error = result['message'] ?? 'Erreur de connexion'; _loading = false; });
       }
@@ -77,7 +78,8 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
         // Auto-login after register
         final loginResult = await ApiService.login(_regPseudo.text, _regPass.text);
         if (loginResult.containsKey('id')) {
-          widget.onLoginSuccess(loginResult['id'] as int, loginResult['pseudo'] as String);
+          final role = loginResult['role']?.toString() ?? 'user';
+          widget.onLoginSuccess(loginResult['id'] as int, loginResult['pseudo'] as String, role);
           return;
         }
       }

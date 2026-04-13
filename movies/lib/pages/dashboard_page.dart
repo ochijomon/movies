@@ -195,7 +195,7 @@ class _DashboardPageState extends State<DashboardPage> {
       title: 'Films les plus notes',
       titleIcon: Icons.local_fire_department_outlined,
       actionLabel: 'Voir tout',
-      onAction: () => widget.onNavigate?.call(2),
+      onAction: () => widget.onNavigate?.call(3),
       child: popular.isEmpty
           ? const Padding(
               padding: EdgeInsets.all(AppSpacing.lg),
@@ -240,7 +240,7 @@ class _DashboardPageState extends State<DashboardPage> {
       title: 'Activite recente',
       titleIcon: Icons.history_rounded,
       actionLabel: 'Voir tout',
-      onAction: () => widget.onNavigate?.call(3),
+      onAction: () => widget.onNavigate?.call(4),
       child: recent.isEmpty
           ? const Padding(
               padding: EdgeInsets.all(AppSpacing.lg),
@@ -260,7 +260,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   icon: Icons.rate_review_outlined,
                   iconColor: AppColors.primary,
                   title: 'Note de $pseudo',
-                  subtitle: '$movieTitle - $avg/5',
+                  subtitle: '$movieTitle - $avg/10',
                   time: '',
                 );
               }).toList(),

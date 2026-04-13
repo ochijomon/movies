@@ -10,6 +10,7 @@ class AppTopBar extends StatelessWidget {
   final VoidCallback? onSettingsTap;
   final VoidCallback? onNotificationsTap;
   final VoidCallback? onProfileTap;
+  final Widget? trailing;
 
   const AppTopBar({
     super.key,
@@ -20,6 +21,7 @@ class AppTopBar extends StatelessWidget {
     this.onSettingsTap,
     this.onNotificationsTap,
     this.onProfileTap,
+    this.trailing,
   });
 
   @override
@@ -54,6 +56,10 @@ class AppTopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
+          if (trailing != null) ...[
+            trailing!,
+            const SizedBox(width: AppSpacing.md),
+          ],
           _TopBarAction(icon: Icons.notifications_none_rounded, badgeCount: 0, onTap: onNotificationsTap ?? () {}),
           const SizedBox(width: AppSpacing.sm),
           _TopBarAction(icon: Icons.settings_outlined, onTap: onSettingsTap ?? () {}),
