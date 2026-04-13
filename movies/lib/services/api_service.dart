@@ -3,13 +3,15 @@ import 'package:http/http.dart' as http;
 
 /// Central API service connecting to the PHP backend.
 class ApiService {
-  // Base URL relative - works when Flutter web is served from the same Apache server
-  static const String _baseUrl = '/movies/movies_api/api';
+    static String get _baseUrl {
+    final origin = Uri.base.origin; 
+    final path = Uri.base.path;     
+    
+    final base = path.replaceAll(RegExp(r'web_app.*'), '');
+    return '$origin${base}movies_api/api';
+  }
 
-  // ─── AUTH ───
-
-  /// Login: POST /auth/login.php
-  /// Returns {message, id, pseudo} on success.
+ 
   static Future<Map<String, dynamic>> login(String pseudo, String password) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/login.php'),
