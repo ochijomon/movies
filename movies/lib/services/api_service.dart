@@ -2,19 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 /// Central API service connecting to the PHP backend.
+/// Endpoints match exactly what exists in movies_api/api/.
 class ApiService {
-  // Construit l'URL depuis le premier segment du path (ex: /Books_Moovies/)
-  // Fonctionne peu importe le sous-dossier (web_app, movies, etc.)
-  static String get _baseUrl {
-    final origin = Uri.base.origin;
-    final path = Uri.base.path;
-    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
-    final base = segments.isNotEmpty ? '/${segments.first}/' : '/';
-    return '$origin${base}movies_api/api';
-  }
+  static const String _baseUrl = '/movies/movies_api/api';
 
   // ─── AUTH ───
 
+  /// Login: POST /auth/login.php
+  /// Returns {message, id, pseudo, role} on success.
   static Future<Map<String, dynamic>> login(String pseudo, String password) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/login.php'),
@@ -24,6 +19,8 @@ class ApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  /// Register: POST /auth/register.php
+  /// Returns {message}.
   static Future<Map<String, dynamic>> register(String pseudo, String email, String password) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/auth/register.php'),
@@ -35,6 +32,8 @@ class ApiService {
 
   // ─── MOVIES ───
 
+  /// Search movies via OMDB: GET /movies/search.php?s=query
+  /// Returns List of {Title, Year, imdbID, Type, Poster}.
   static Future<List<Map<String, dynamic>>> searchMovies(String query) async {
     final response = await http.get(
       Uri.parse('$_baseUrl/movies/search.php?s=${Uri.encodeComponent(query)}'),
@@ -46,12 +45,20 @@ class ApiService {
     return [];
   }
 
+  /// Get single movie details: GET /movies/read.php?id=imdbId
+  /// Returns OMDB data + local_ratings {avg_scenario, avg_acting, avg_visual, total_reviews}.
   static Future<Map<String, dynamic>?> getMovie(String imdbId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/movies/read.php?id=$imdbId'));
-    if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+    final response = await http.get(
+      Uri.parse('$_baseUrl/movies/read.php?id=$imdbId'),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
     return null;
   }
 
+  /// Rate a movie: POST /movies/rate.php
+  /// Body: {imdb_id, id_utilisateur, scenario, jeu_acteur, qualite_av, commentaire}
   static Future<Map<String, dynamic>> rateMovie({
     required String imdbId,
     required int userId,
@@ -75,18 +82,24 @@ class ApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  // ─── USER ───
-
+  /// Check if user already rated a movie: GET /movies/user_ratings.php?user_id=X&imdb_id=Y
+  /// Returns {already_rated: bool, rating?: {id, scenario, jeu_acteur, qualite_av, commentaire}}.
   static Future<Map<String, dynamic>> checkUserRating(int userId, String imdbId) async {
     final response = await http.get(
       Uri.parse('$_baseUrl/movies/user_ratings.php?user_id=$userId&imdb_id=$imdbId'),
     );
-    if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
     return {};
   }
 
+  /// Get all ratings by a user: GET /movies/user_ratings.php?user_id=X
+  /// Returns List of {id, imdb_id, scenario, jeu_acteur, qualite_av, commentaire, date_notation}.
   static Future<List<Map<String, dynamic>>> getUserRatings(int userId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/movies/user_ratings.php?user_id=$userId'));
+    final response = await http.get(
+      Uri.parse('$_baseUrl/movies/user_ratings.php?user_id=$userId'),
+    );
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
       if (decoded is List) return decoded.cast<Map<String, dynamic>>();
@@ -94,14 +107,20 @@ class ApiService {
     return [];
   }
 
-  // ─── ADMIN ───
+  // ─── ADMIN ENDPOINTS ───
 
+  /// Dashboard stats: GET /admin/stats.php
+  /// Returns {total_users, total_notes, total_movies, avg_global, distribution, recent_activity, popular_movies}.
   static Future<Map<String, dynamic>> getStats() async {
     final response = await http.get(Uri.parse('$_baseUrl/admin/stats.php'));
-    if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
     return {};
   }
 
+  /// All users: GET /admin/users.php
+  /// Returns List of {id, pseudo, email, notes_count}.
   static Future<List<Map<String, dynamic>>> getUsers() async {
     final response = await http.get(Uri.parse('$_baseUrl/admin/users.php'));
     if (response.statusCode == 200) {
@@ -111,28 +130,8 @@ class ApiService {
     return [];
   }
 
-  /// Delete a user: DELETE /admin/users.php?id=X
-  static Future<Map<String, dynamic>> deleteUser(int userId) async {
-    final response = await http.delete(
-      Uri.parse('$_baseUrl/admin/users.php?id=$userId'),
-      headers: {'Content-Type': 'application/json'},
-    );
-    return jsonDecode(response.body) as Map<String, dynamic>;
-  }
-
-  /// Update user: PUT /admin/users.php
-  static Future<Map<String, dynamic>> updateUser(int userId, {String? pseudo, String? email}) async {
-    final body = <String, dynamic>{'id': userId};
-    if (pseudo != null) body['pseudo'] = pseudo;
-    if (email != null) body['email'] = email;
-    final response = await http.put(
-      Uri.parse('$_baseUrl/admin/users.php'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
-    return jsonDecode(response.body) as Map<String, dynamic>;
-  }
-
+  /// All ratings: GET /admin/ratings.php
+  /// Returns List of {id, imdb_id, scenario, jeu_acteur, qualite_av, commentaire, pseudo}.
   static Future<List<Map<String, dynamic>>> getRatings() async {
     final response = await http.get(Uri.parse('$_baseUrl/admin/ratings.php'));
     if (response.statusCode == 200) {
@@ -140,54 +139,5 @@ class ApiService {
       if (decoded is List) return decoded.cast<Map<String, dynamic>>();
     }
     return [];
-  }
-
-  // ─── USER PROFILE ───
-
-  /// Update own profile: PUT /auth/profile.php
-  static Future<Map<String, dynamic>> updateProfile(int userId, {String? pseudo, String? email, String? password}) async {
-    final body = <String, dynamic>{'id': userId};
-    if (pseudo != null) body['pseudo'] = pseudo;
-    if (email != null) body['email'] = email;
-    if (password != null && password.isNotEmpty) body['password'] = password;
-    final response = await http.put(
-      Uri.parse('$_baseUrl/auth/profile.php'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
-    return jsonDecode(response.body) as Map<String, dynamic>;
-  }
-
-  // ─── RATING MANAGEMENT ───
-
-  /// Delete own rating: DELETE /movies/rate.php?id=X
-  static Future<Map<String, dynamic>> deleteRating(int ratingId) async {
-    final response = await http.delete(
-      Uri.parse('$_baseUrl/movies/rate.php?id=$ratingId'),
-      headers: {'Content-Type': 'application/json'},
-    );
-    return jsonDecode(response.body) as Map<String, dynamic>;
-  }
-
-  /// Update own rating: PUT /movies/rate.php
-  static Future<Map<String, dynamic>> updateRating({
-    required int ratingId,
-    required int scenario,
-    required int jeuActeur,
-    required int qualiteAv,
-    String commentaire = '',
-  }) async {
-    final response = await http.put(
-      Uri.parse('$_baseUrl/movies/rate.php'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'id': ratingId,
-        'scenario': scenario,
-        'jeu_acteur': jeuActeur,
-        'qualite_av': qualiteAv,
-        'commentaire': commentaire,
-      }),
-    );
-    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 }

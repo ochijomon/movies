@@ -137,90 +137,6 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     });
   }
 
-  Future<void> _deleteUser(int userId, String pseudo) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
-        title: const Text('Supprimer l\'utilisateur'),
-        content: Text('Voulez-vous vraiment supprimer "$pseudo" et toutes ses notes ?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true && mounted) {
-      try {
-        await ApiService.deleteUser(userId);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('"$pseudo" supprime'), backgroundColor: AppColors.primary),
-        );
-        setState(() => _loading = true);
-        _loadData();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
-          );
-        }
-      }
-    }
-  }
-
-  void _showEditDialog(Map<String, dynamic> user) {
-    final pseudoCtrl = TextEditingController(text: user['pseudo']?.toString() ?? '');
-    final emailCtrl = TextEditingController(text: user['email']?.toString() ?? '');
-    final userId = int.tryParse(user['id']?.toString() ?? '0') ?? 0;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
-        title: const Text('Modifier l\'utilisateur'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: pseudoCtrl, decoration: const InputDecoration(labelText: 'Pseudo')),
-            const SizedBox(height: AppSpacing.md),
-            TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          ElevatedButton(
-            onPressed: () async {
-              if (pseudoCtrl.text.isEmpty || emailCtrl.text.isEmpty) return;
-              try {
-                await ApiService.updateUser(userId, pseudo: pseudoCtrl.text, email: emailCtrl.text);
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Utilisateur mis a jour'), backgroundColor: AppColors.primary),
-                  );
-                  setState(() => _loading = true);
-                  _loadData();
-                }
-              } catch (e) {
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
-                  );
-                }
-              }
-            },
-            child: const Text('Enregistrer'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showRegisterDialog() {
     final pseudoCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
@@ -448,7 +364,6 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
           flex: 1,
           child: Text('Moy.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
         ),
-        const SizedBox(width: 100, child: Text('Actions', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
       ]),
     );
   }
@@ -515,28 +430,6 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               child: notesCount > 0
                   ? RatingBadge(rating: avgRating)
                   : const Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            ),
-            SizedBox(
-              width: 100,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    color: AppColors.accent,
-                    tooltip: 'Modifier',
-                    onPressed: () => _showEditDialog(user),
-                    splashRadius: 18,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                    color: AppColors.error,
-                    tooltip: 'Supprimer',
-                    onPressed: () => _deleteUser(userId, pseudo),
-                    splashRadius: 18,
-                  ),
-                ],
-              ),
             ),
           ]),
         ),

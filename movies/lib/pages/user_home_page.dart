@@ -768,7 +768,6 @@ class _MovieDetailPageState extends State<_MovieDetailPage> {
       final a = double.tryParse(_existingRating!['jeu_acteur']?.toString() ?? '0') ?? 0;
       final v = double.tryParse(_existingRating!['qualite_av']?.toString() ?? '0') ?? 0;
       final c = _existingRating!['commentaire']?.toString() ?? '';
-      final ratingId = int.tryParse(_existingRating!['id']?.toString() ?? '0') ?? 0;
 
       return Container(
         width: double.infinity,
@@ -784,20 +783,6 @@ class _MovieDetailPageState extends State<_MovieDetailPage> {
             const Icon(Icons.check_circle_outline, color: AppColors.primary, size: 20),
             const SizedBox(width: 8),
             const Expanded(child: Text('Vous avez deja note ce film', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary))),
-            // Edit button
-            IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 20),
-              color: AppColors.accent,
-              tooltip: 'Modifier ma note',
-              onPressed: () => _showEditRatingDialog(ratingId, s, a, v, c),
-            ),
-            // Delete button
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20),
-              color: AppColors.error,
-              tooltip: 'Supprimer ma note',
-              onPressed: () => _confirmDeleteRating(ratingId),
-            ),
           ]),
           const SizedBox(height: 16),
           Row(children: [
@@ -820,97 +805,6 @@ class _MovieDetailPageState extends State<_MovieDetailPage> {
       _load();
     });
   }
-
-  void _showEditRatingDialog(int ratingId, double s, double a, double v, String comment) {
-    double scenario = s, acteur = a, av = v;
-    final commentCtrl = TextEditingController(text: comment);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
-          title: const Text('Modifier ma note'),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            _DialogSlider(label: 'Scenario', value: scenario, onChanged: (val) => setDialogState(() => scenario = val)),
-            _DialogSlider(label: 'Acteurs', value: acteur, onChanged: (val) => setDialogState(() => acteur = val)),
-            _DialogSlider(label: 'Audio-Visuel', value: av, onChanged: (val) => setDialogState(() => av = val)),
-            const SizedBox(height: AppSpacing.md),
-            TextField(controller: commentCtrl, decoration: const InputDecoration(hintText: 'Commentaire'), maxLines: 2),
-          ]),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  await ApiService.updateRating(
-                    ratingId: ratingId,
-                    scenario: scenario.round(),
-                    jeuActeur: acteur.round(),
-                    qualiteAv: av.round(),
-                    commentaire: commentCtrl.text,
-                  );
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Note mise a jour'), backgroundColor: AppColors.primary),
-                    );
-                    setState(() => _loading = true);
-                    _load();
-                  }
-                } catch (e) {
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
-                    );
-                  }
-                }
-              },
-              child: const Text('Enregistrer'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _confirmDeleteRating(int ratingId) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
-        title: const Text('Supprimer ma note'),
-        content: const Text('Voulez-vous vraiment supprimer votre note pour ce film ?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true && mounted) {
-      try {
-        await ApiService.deleteRating(ratingId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Note supprimee'), backgroundColor: AppColors.primary),
-          );
-          setState(() => _loading = true);
-          _load();
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
-          );
-        }
-      }
-    }
-  }
 }
 
 class _RatingChip extends StatelessWidget {
@@ -927,25 +821,6 @@ class _RatingChip extends StatelessWidget {
         Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         const SizedBox(height: 4),
         RatingBadge(rating: value),
-      ]),
-    );
-  }
-}
-
-class _DialogSlider extends StatelessWidget {
-  final String label;
-  final double value;
-  final ValueChanged<double> onChanged;
-  const _DialogSlider({required this.label, required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(children: [
-        SizedBox(width: 90, child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
-        Expanded(child: Slider(value: value, min: 1, max: 10, divisions: 9, label: '${value.round()}', activeColor: AppColors.primary, onChanged: onChanged)),
-        Text('${value.round()}/10', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
       ]),
     );
   }
@@ -1345,43 +1220,49 @@ class _ProfileTab extends StatefulWidget {
 }
 
 class _ProfileTabState extends State<_ProfileTab> {
-  late TextEditingController _pseudoCtrl;
-  late TextEditingController _emailCtrl;
-  final _passwordCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
-  bool _saving = false;
   bool _loading = true;
   String? _currentEmail;
-
-  // Stats
   int _totalRatings = 0;
   double _avgRating = 0;
+  String _favoriteGenre = '-';
 
   @override
   void initState() {
     super.initState();
-    _pseudoCtrl = TextEditingController(text: widget.pseudo);
-    _emailCtrl = TextEditingController();
     _loadProfile();
   }
 
   Future<void> _loadProfile() async {
     try {
-      // Load user ratings for stats
       final ratings = await ApiService.getUserRatings(widget.userId);
       double sum = 0;
+      final genreCount = <String, int>{};
       for (final r in ratings) {
         final s = double.tryParse(r['scenario']?.toString() ?? '0') ?? 0;
         final a = double.tryParse(r['jeu_acteur']?.toString() ?? '0') ?? 0;
         final v = double.tryParse(r['qualite_av']?.toString() ?? '0') ?? 0;
         sum += (s + a + v) / 3;
+        // Fetch genre
+        final imdbId = r['imdb_id']?.toString() ?? '';
+        if (imdbId.isNotEmpty) {
+          final details = await ApiService.getMovie(imdbId);
+          if (details != null) {
+            final genre = details['Genre']?.toString() ?? '';
+            for (final g in genre.split(',')) {
+              final trimmed = g.trim();
+              if (trimmed.isNotEmpty) genreCount[trimmed] = (genreCount[trimmed] ?? 0) + 1;
+            }
+          }
+        }
       }
-      // Try to get email from users list
+      // Get email
       final users = await ApiService.getUsers();
       final me = users.where((u) => u['id']?.toString() == widget.userId.toString()).toList();
-      if (me.isNotEmpty) {
-        _currentEmail = me.first['email']?.toString() ?? '';
-        _emailCtrl.text = _currentEmail!;
+      if (me.isNotEmpty) _currentEmail = me.first['email']?.toString() ?? '';
+      // Favorite genre
+      if (genreCount.isNotEmpty) {
+        final sorted = genreCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+        _favoriteGenre = sorted.first.key;
       }
       if (mounted) {
         setState(() {
@@ -1395,56 +1276,6 @@ class _ProfileTabState extends State<_ProfileTab> {
     }
   }
 
-  Future<void> _save() async {
-    if (_pseudoCtrl.text.isEmpty || _emailCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pseudo et email requis'), backgroundColor: AppColors.error),
-      );
-      return;
-    }
-    if (_passwordCtrl.text.isNotEmpty && _passwordCtrl.text != _confirmCtrl.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Les mots de passe ne correspondent pas'), backgroundColor: AppColors.error),
-      );
-      return;
-    }
-
-    setState(() => _saving = true);
-    try {
-      await ApiService.updateProfile(
-        widget.userId,
-        pseudo: _pseudoCtrl.text,
-        email: _emailCtrl.text,
-        password: _passwordCtrl.text.isNotEmpty ? _passwordCtrl.text : null,
-      );
-      if (mounted) {
-        widget.onPseudoChanged(_pseudoCtrl.text);
-        _passwordCtrl.clear();
-        _confirmCtrl.clear();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil mis a jour'), backgroundColor: AppColors.primary),
-        );
-        setState(() => _saving = false);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
-        );
-        setState(() => _saving = false);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _pseudoCtrl.dispose();
-    _emailCtrl.dispose();
-    _passwordCtrl.dispose();
-    _confirmCtrl.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
@@ -1452,75 +1283,40 @@ class _ProfileTabState extends State<_ProfileTab> {
     return ResponsiveLayout(
       builder: (context, screenType) {
         final pad = screenType == ScreenType.desktop ? AppSpacing.xl : AppSpacing.md;
-        final maxWidth = screenType == ScreenType.desktop ? 600.0 : double.infinity;
+        final maxWidth = screenType == ScreenType.desktop ? 500.0 : double.infinity;
 
         return SingleChildScrollView(
           padding: EdgeInsets.all(pad),
           child: Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxWidth),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // Avatar + stats
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadius.card), boxShadow: AppShadows.soft),
-                  child: Column(children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                      child: Text(
-                        widget.pseudo.isNotEmpty ? widget.pseudo[0].toUpperCase() : '?',
-                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.primary),
-                      ),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadius.card), boxShadow: AppShadows.soft),
+                child: Column(children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                    child: Text(
+                      widget.pseudo.isNotEmpty ? widget.pseudo[0].toUpperCase() : '?',
+                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.primary),
                     ),
-                    const SizedBox(height: 12),
-                    Text(widget.pseudo, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                    const SizedBox(height: 4),
-                    Text(_currentEmail ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                    const SizedBox(height: 20),
-                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      _ProfileStat(value: '$_totalRatings', label: 'Films notes'),
-                      const SizedBox(width: 32),
-                      _ProfileStat(value: _avgRating.toStringAsFixed(1), label: 'Note moyenne'),
-                    ]),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(widget.pseudo, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text(_currentEmail ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  const SizedBox(height: 24),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    _ProfileStat(value: '$_totalRatings', label: 'Films notes'),
+                    const SizedBox(width: 32),
+                    _ProfileStat(value: _avgRating.toStringAsFixed(1), label: 'Note moyenne'),
+                    const SizedBox(width: 32),
+                    _ProfileStat(value: _favoriteGenre, label: 'Genre prefere'),
                   ]),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                // Edit form
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppRadius.card), boxShadow: AppShadows.soft),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Modifier mon profil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                    const SizedBox(height: AppSpacing.lg),
-                    TextField(controller: _pseudoCtrl, decoration: const InputDecoration(labelText: 'Pseudo', prefixIcon: Icon(Icons.person_outline, size: 20))),
-                    const SizedBox(height: AppSpacing.md),
-                    TextField(controller: _emailCtrl, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined, size: 20))),
-                    const SizedBox(height: AppSpacing.lg),
-                    const Text('Changer le mot de passe', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                    const SizedBox(height: AppSpacing.sm),
-                    const Text('Laissez vide pour ne pas changer', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    const SizedBox(height: AppSpacing.md),
-                    TextField(controller: _passwordCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Nouveau mot de passe', prefixIcon: Icon(Icons.lock_outline, size: 20))),
-                    const SizedBox(height: AppSpacing.md),
-                    TextField(controller: _confirmCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Confirmer le mot de passe', prefixIcon: Icon(Icons.lock_outline, size: 20))),
-                    const SizedBox(height: AppSpacing.lg),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _saving ? null : _save,
-                        icon: _saving
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.save_outlined, size: 18),
-                        label: const Text('Enregistrer'),
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-                      ),
-                    ),
-                  ]),
-                ),
-              ]),
+                ]),
+              ),
             ),
           ),
         );
